@@ -1,5 +1,5 @@
 import { parse, Token } from './parser';
-import * as rls from 'readline-sync';
+import * as readline from 'readline';
 
 export function interpret(text: string): void {
     let tokens = parse(text);
@@ -15,6 +15,7 @@ class TapeMachine {
     tapeLength = 255;
     tape: Array<number> = new Array<number>(this.tapeLength).fill(0);
     tapeIndex = 0;
+    run = true;
 
     constructor(tokens: Token[]) {
         this.tokens = tokens;
@@ -23,13 +24,11 @@ class TapeMachine {
     
     start() {
         this.eval()
-        process.stdout.write("\n");
     }
 
     eval() {
-        while (this.tokenIndex < this.tokenLength) {
+        while (this.run && this.tokenIndex < this.tokenLength) {
             const token = this.currentToken();
-            // console.log(token);
             switch (token) {
                 case '+':
                     this.increment();
@@ -163,10 +162,20 @@ class TapeMachine {
     }
 
     putCell() {
-        let inLine = rls.question("> ");
-        // Ignore all other characters since it's 1AM and this is the last thing to do
-        this.tape[this.tapeIndex] = inLine.charCodeAt(0);
-        this.advance();
+        this.run = false;
+
+        const rl = readline.createInterface({
+            input: process.stdin,
+            output: process.stdout,
+        });
+
+        rl.question("> ", (inLine) => {
+            this.tape[this.tapeIndex] = inLine.charCodeAt(0);
+            rl.close();
+            this.run = true;
+            this.advance();
+            this.eval();
+        });
     }
 
 }

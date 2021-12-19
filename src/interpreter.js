@@ -18,19 +18,10 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.interpret = void 0;
 const parser_1 = require("./parser");
-const rls = __importStar(require("readline-sync"));
+const readline = __importStar(require("readline"));
 function interpret(text) {
     let tokens = (0, parser_1.parse)(text);
     const machine = new TapeMachine(tokens);
@@ -43,49 +34,46 @@ class TapeMachine {
         this.tapeLength = 255;
         this.tape = new Array(this.tapeLength).fill(0);
         this.tapeIndex = 0;
+        this.run = true;
         this.tokens = tokens;
         this.tokenLength = tokens.length;
     }
     start() {
         this.eval();
-        process.stdout.write("\n");
     }
     eval() {
-        return __awaiter(this, void 0, void 0, function* () {
-            while (this.tokenIndex < this.tokenLength) {
-                const token = this.currentToken();
-                // console.log(token);
-                switch (token) {
-                    case '+':
-                        this.increment();
-                        break;
-                    case '-':
-                        this.decrement();
-                        break;
-                    case '<':
-                        this.shiftLeft();
-                        break;
-                    case '>':
-                        this.shiftRight();
-                        break;
-                    case '[':
-                        this.startLoop();
-                        break;
-                    case ']':
-                        this.endLoop();
-                        break;
-                    case '.':
-                        this.printCell();
-                        break;
-                    case ',':
-                        yield this.putCell();
-                        break;
-                    default:
-                        console.log(`Invalid operation ${this.currentToken()} ${this.tokenIndex}`);
-                        break;
-                }
+        while (this.run && this.tokenIndex < this.tokenLength) {
+            const token = this.currentToken();
+            switch (token) {
+                case '+':
+                    this.increment();
+                    break;
+                case '-':
+                    this.decrement();
+                    break;
+                case '<':
+                    this.shiftLeft();
+                    break;
+                case '>':
+                    this.shiftRight();
+                    break;
+                case '[':
+                    this.startLoop();
+                    break;
+                case ']':
+                    this.endLoop();
+                    break;
+                case '.':
+                    this.printCell();
+                    break;
+                case ',':
+                    this.putCell();
+                    break;
+                default:
+                    console.log(`Invalid operation ${this.currentToken()} ${this.tokenIndex}`);
+                    break;
             }
-        });
+        }
     }
     advance() {
         this.tokenIndex++;
@@ -171,9 +159,17 @@ class TapeMachine {
         this.advance();
     }
     putCell() {
-        let inLine = rls.question("> ");
-        // Ignore all other characters since it's 1AM and this is the last thing to do
-        this.tape[this.tapeIndex] = inLine.charCodeAt(0);
-        this.advance();
+        this.run = false;
+        const rl = readline.createInterface({
+            input: process.stdin,
+            output: process.stdout,
+        });
+        rl.question("> ", (inLine) => {
+            this.tape[this.tapeIndex] = inLine.charCodeAt(0);
+            rl.close();
+            this.run = true;
+            this.advance();
+            this.eval();
+        });
     }
 }
